@@ -1,32 +1,9 @@
-/**
- * @buildpad-origin @buildpad/cli/api-routes/daas-items-id-route
- * @buildpad-version 1.0.0
- *
- * This file was copied from Buildpad UI Packages.
- * To update, run: npx @buildpad/cli add api-routes/daas-items-id-route --overwrite
- *
- * Docs: https://buildpad.dev/components/api-routes/daas-items-id-route
- */
-
-/**
- * DaaS Item by ID Proxy Route
- *
- * Proxies /api/items/[collection]/[id] requests to the DaaS backend.
- *
- * GET    /api/items/[collection]/[id]  → DaaS GET    /api/items/{collection}/{id}
- * PATCH  /api/items/[collection]/[id]  → DaaS PATCH  /api/items/{collection}/{id}
- * DELETE /api/items/[collection]/[id]  → DaaS DELETE /api/items/{collection}/{id}
- *
- * This file is copied to your project by the Buildpad CLI.
- * Location: app/api/items/[collection]/[id]/route.ts
- */
-
 import { type NextRequest, NextResponse } from 'next/server';
 import { getAuthHeaders, getDaaSUrl } from '@/lib/api/auth-headers';
 
 type Params = { params: Promise<{ collection: string; id: string }> };
 
-async function proxyRequest(
+async function proxyRequestWithId(
   request: NextRequest,
   collection: string,
   id: string,
@@ -39,7 +16,7 @@ async function proxyRequest(
 
   const fetchOptions: RequestInit = { method, headers, cache: 'no-store' };
 
-  if (method !== 'GET' && method !== 'HEAD' && method !== 'DELETE') {
+  if (method !== 'GET' && method !== 'HEAD') {
     const contentType = request.headers.get('content-type');
     if (contentType) {
       (fetchOptions.headers as Record<string, string>)['Content-Type'] =
@@ -59,14 +36,26 @@ async function proxyRequest(
     return new NextResponse(null, { status: 204 });
   }
 
-  const data = await response.json();
+  let data;
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    try {
+      data = await response.json();
+    } catch {
+      data = { error: "Failed to parse JSON response from DaaS" };
+    }
+  } else {
+    const text = await response.text();
+    data = { error: "DaaS returned non-JSON response", details: text.substring(0, 200) };
+  }
+
   return NextResponse.json(data, { status: response.status });
 }
 
 export async function GET(request: NextRequest, { params }: Params) {
   const { collection, id } = await params;
   try {
-    return await proxyRequest(request, collection, id, 'GET');
+    return await proxyRequestWithId(request, collection, id, 'GET');
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Proxy error';
     return NextResponse.json({ errors: [{ message }] }, { status: 500 });
@@ -76,7 +65,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 export async function PATCH(request: NextRequest, { params }: Params) {
   const { collection, id } = await params;
   try {
-    return await proxyRequest(request, collection, id, 'PATCH');
+    return await proxyRequestWithId(request, collection, id, 'PATCH');
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Proxy error';
     return NextResponse.json({ errors: [{ message }] }, { status: 500 });
@@ -86,7 +75,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 export async function DELETE(request: NextRequest, { params }: Params) {
   const { collection, id } = await params;
   try {
-    return await proxyRequest(request, collection, id, 'DELETE');
+    return await proxyRequestWithId(request, collection, id, 'DELETE');
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Proxy error';
     return NextResponse.json({ errors: [{ message }] }, { status: 500 });

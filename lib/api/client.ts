@@ -55,3 +55,24 @@ export async function createItem<T>(
 
   return response.json();
 }
+
+export async function updateItem<T>(
+  collection: string,
+  id: string,
+  data: Partial<T>,
+): Promise<{ data: T }> {
+  const response = await fetch(`/api/items/${collection}/${id}`, {
+    method: "PATCH",
+    headers: { 
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.errors?.[0]?.message || "API Error");
+  }
+
+  return response.json();
+}
