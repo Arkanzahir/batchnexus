@@ -861,7 +861,7 @@ export const ListM2M: React.FC<ListM2MProps> = ({
 
     // ── DnD drag-end handler ────────────────────────────────────────
     const handleDragEnd = useCallback(
-        (event: DragEndEvent) => {
+        (event: any) => {
             const { active, over } = event;
             if (!over || active.id === over.id) return;
 

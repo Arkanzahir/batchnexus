@@ -57,7 +57,19 @@ async function proxyRequest(
     return new NextResponse(null, { status: 204 });
   }
 
-  const data = await response.json();
+  let data;
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    try {
+      data = await response.json();
+    } catch {
+      data = { error: "Failed to parse JSON response from DaaS" };
+    }
+  } else {
+    const text = await response.text();
+    data = { error: "DaaS returned non-JSON response", details: text.substring(0, 200) };
+  }
+
   return NextResponse.json(data, { status: response.status });
 }
 

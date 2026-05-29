@@ -503,7 +503,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
 
     // Handle drag end → reorder items
     const handleDragEnd = useCallback(
-        (event: DragEndEvent) => {
+        (event: any) => {
             const { active, over } = event;
             if (!over || active.id === over.id) return;
 

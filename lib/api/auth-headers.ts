@@ -66,3 +66,6 @@ export function getDaasUrl(): string {
 
   return url.replace(/\/$/, '');
 }
+
+export const getDaaSUrl = getDaasUrl;
+

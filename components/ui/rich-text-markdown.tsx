@@ -129,7 +129,6 @@ export function RichTextMarkdown({
       }),
     ],
     content: value,
-    // @ts-expect-error — auto-suppressed: Binding element 'editor' implicitly has an 'any' type.
     onUpdate: ({ editor }) => {
       // Get HTML content for now (we'll convert to markdown later if needed)
       const html = editor.getHTML();

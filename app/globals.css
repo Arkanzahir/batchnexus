@@ -1,90 +1,110 @@
 /* ═══════════════════════════════════════════════════════════
-   Buildpad Global Styles
-   Uses design tokens — do not hard-code colors or spacing.
+   BatchNexus Global Styles
    ═══════════════════════════════════════════════════════════ */
 
-@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fraunces:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap");
+@import "tailwindcss";
 
-body {
-  background: var(--ds-body-bg);
-  color: var(--ds-body-color);
-  font-family: var(--ds-font-family);
-  font-size: var(--ds-body-font-size);
-  line-height: var(--ds-line-height-base);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@theme {
+  --color-primary: #005129;
+  --color-primary-container: #006c39;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #9cf6b5;
+  --color-secondary: #006d33;
+  --color-secondary-container: #81fba0;
+  --color-on-secondary-container: #007437;
+  --color-tertiary: #324e00;
+  --color-tertiary-container: #446800;
+  --color-on-tertiary-container: #b1e95b;
+  --color-background: #f6fbf3;
+  --color-on-background: #181d18;
+  --color-surface: #f6fbf3;
+  --color-surface-variant: #dfe4dc;
+  --color-surface-container: #ebefe8;
+  --color-surface-container-low: #f0f5ed;
+  --color-surface-container-high: #e5e9e2;
+  --color-surface-container-highest: #dfe4dc;
+  --color-on-surface: #181d18;
+  --color-on-surface-variant: #3f4940;
+  --color-outline: #6f7a6f;
+  --color-outline-variant: #bec9bd;
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+  --color-on-secondary: #ffffff;
+  --color-secondary-fixed: #81fba0;
+  --color-on-secondary-fixed: #002109;
+  --color-tertiary-fixed: #bbf465;
+  --color-on-tertiary-fixed: #121f00;
+  --color-primary-fixed: #9cf6b5;
+
+  --font-sans: "Montserrat", "Open Sans", sans-serif;
+  --font-body: "Open Sans", sans-serif;
+  --font-display: "Montserrat", sans-serif;
+  --font-accent: "Playfair Display", serif;
 }
 
-.emoji-icon {
-  font-size: 1.2rem;
-  line-height: 1;
+/* ── UI Utilities ──────────────────────────────────────────── */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+.icon-fill {
+  font-variation-settings: 'FILL' 1;
+}
+.ambient-shadow {
+  box-shadow: 0px 4px 20px rgba(0, 70, 51, 0.06);
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-/* ── Tabs ─────────────────────────────────────────────────── */
-.mantine-Tabs-tab {
-  transition: background var(--ds-transition-fast, 150ms ease), color var(--ds-transition-fast, 150ms ease);
+/* ── Warehouse Grid ────────────────────────────────────────── */
+.warehouse-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  gap: 8px;
+  height: 100%;
+}
+.map-zone {
+  border: 1px solid #bec9bd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.zone-amb-a { grid-column: 1 / 5; grid-row: 1 / 5; background-color: #ebefe8; }
+.zone-cold-b { grid-column: 5 / 8; grid-row: 1 / 5; background-color: #e5e9e2; }
+.zone-frz-c { grid-column: 8 / 11; grid-row: 1 / 5; background-color: #dfe4dc; }
+.zone-hold-qc { grid-column: 11 / 13; grid-row: 1 / 5; background-color: #ffdad6; }
+.zone-haz-d { grid-column: 1 / 5; grid-row: 5 / 9; background-color: #ebefe8; }
+.zone-staging { grid-column: 5 / 13; grid-row: 5 / 9; background-color: #f6fbf3; border-style: dashed; }
+
+/* -- Dark Mode Overrides ------------------------------------- */
+[data-mantine-color-scheme="dark"] {
+  --color-background: #111411;
+  --color-surface: #111411;
+  --color-surface-variant: #282d28;
+  --color-surface-container: #191c19;
+  --color-surface-container-low: #151815;
+  --color-surface-container-high: #202420;
+  --color-surface-container-highest: #2b302b;
+  --color-on-surface: #e1e3de;
+  --color-on-surface-variant: #c0c9c0;
+  --color-outline: #8a938a;
+  --color-outline-variant: #404941;
+  --color-primary: #81fba0;
+  --color-on-primary: #00391b;
+  --color-primary-container: #005228;
+  --color-on-primary-container: #9cf6b5;
+  --color-secondary: #81fba0;
+  --color-secondary-container: #005226;
+  --color-on-secondary-container: #9cf6b5;
 }
 
-.mantine-Tabs-tab:hover {
-  background-color: var(--ds-gray-200);
-  color: var(--ds-gray-900);
-}
-
-.mantine-Tabs-tab[data-active],
-.mantine-Tabs-tab[data-active]:hover {
-  color: var(--ds-primary);
-  border-bottom-color: var(--ds-primary);
-  font-weight: 600;
-}
-
-/* ── Notifications ────────────────────────────────────────── */
-.mantine-Notification-root[data-variant="success"] {
-  border-left-color: var(--ds-success);
-}
-
-.mantine-Notification-root[data-variant="error"] {
-  border-left-color: var(--ds-danger);
-}
-
-.mantine-Notification-root[data-variant="warning"] {
-  border-left-color: var(--ds-warning);
-}
-
-.mantine-Notification-root[data-variant="info"] {
-  border-left-color: var(--ds-info);
-}
-
-/* ── Form Focus ───────────────────────────────────────────── */
-.mantine-Input-input:focus {
-  border-color: var(--ds-primary);
-  box-shadow: var(--ds-focus-ring);
-}
-
-/* ── Button Hover Lift ────────────────────────────────────── */
-.mantine-Button-root:hover {
-  transform: translateY(-1px);
-}
-
-/* ── Interactive Elements ─────────────────────────────────── */
-.mantine-Modal-close:hover {
-  background-color: var(--ds-gray-200);
-}
-
-.mantine-Anchor-root:hover {
-  text-decoration: underline;
-  color: var(--ds-primary);
-}
-
-.mantine-ActionIcon-root {
-  transition: all var(--ds-transition-fast, 150ms ease);
-}
-
-.mantine-ActionIcon-root:hover {
-  background-color: var(--ds-gray-200);
-}
-
-/* ── Cards ────────────────────────────────────────────────── */
-.mantine-Card-root {
-  border: 1px solid var(--ds-border-color);
-  box-shadow: var(--ds-shadow-lg);
+[data-mantine-color-scheme="dark"] .bg-white {
+  background-color: var(--color-surface-container-low) !important;
 }

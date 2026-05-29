@@ -66,11 +66,14 @@ export async function updateSession(request: NextRequest) {
   const isApiRoute = request.nextUrl.pathname.startsWith('/api');
 
   // Redirect unauthenticated users to login (except for public and API routes)
+  // [DISABLED FOR HACKATHON DEMO]
+  /*
   if (!user && !isPublicRoute && !isApiRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
+  */
 
   return supabaseResponse;
 }

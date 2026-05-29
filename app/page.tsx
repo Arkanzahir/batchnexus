@@ -1,54 +1,160 @@
-"use client";
+import Link from "next/link";
 
-import { Title, Text, Card, SimpleGrid, Group } from "@mantine/core";
+export default function DashboardPage() {
+    return (
+        <div className="flex flex-col gap-8">
+            <div className="flex justify-between items-end">
+                <div>
+                    <h2 className="font-display font-bold text-3xl text-primary">Operations Control Tower</h2>
+                    <p className="text-on-surface-variant mt-1">Real-time visibility from supplier intake to sample dispatch.</p>
+                </div>
+                <div className="text-right hidden sm:block">
+                    <p className="text-xs font-bold text-outline uppercase tracking-widest">Last Sync</p>
+                    <p className="text-sm text-on-surface-variant font-bold">Today, 09:41 AM</p>
+                </div>
+            </div>
 
-export default function Home() {
-  return (
-    <div>
-      <Group justify="space-between" mb="xl">
-        <div>
-          <Title order={2}>Operations Dashboard</Title>
-          <Text c="dimmed">Welcome back to Sima Arôme BatchNexus</Text>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+                <div className="bg-surface-container-low rounded-xl p-6 border border-outline-variant shadow-sm flex flex-col justify-between h-40">
+                    <div className="flex justify-between items-start">
+                        <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Inbound Today</span>
+                        <span className="material-symbols-outlined text-primary">local_shipping</span>
+                    </div>
+                    <div className="mt-auto">
+                        <span className="text-4xl font-bold">8</span>
+                        <p className="text-xs text-on-surface-variant mt-1">Shipments expected</p>
+                    </div>
+                </div>
+                <div className="bg-surface-container-low rounded-xl p-6 border border-outline-variant shadow-sm flex flex-col justify-between h-40">
+                    <div className="flex justify-between items-start">
+                        <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Pending QC</span>
+                        <span className="material-symbols-outlined text-secondary">science</span>
+                    </div>
+                    <div className="mt-auto">
+                        <span className="text-4xl font-bold">3</span>
+                        <div className="w-full bg-outline-variant h-1 mt-2 rounded-full overflow-hidden">
+                            <div className="bg-secondary h-full w-2/3"></div>
+                        </div>
+                    </div>
+                </div>
+                <div className="bg-surface-container-low rounded-xl p-6 border border-outline-variant shadow-sm flex flex-col justify-between h-40">
+                    <div className="flex justify-between items-start">
+                        <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Released Lots</span>
+                        <span className="material-symbols-outlined text-secondary">verified</span>
+                    </div>
+                    <div className="mt-auto">
+                        <span className="text-4xl font-bold">5</span>
+                        <p className="text-xs text-primary flex items-center mt-1"><span className="material-symbols-outlined text-sm mr-1">arrow_upward</span> 1 from yesterday</p>
+                    </div>
+                </div>
+                <div className="bg-error-container/20 rounded-xl p-6 border border-error/20 shadow-sm flex flex-col justify-between h-40">
+                    <div className="flex justify-between items-start">
+                        <span className="text-xs font-bold text-on-error-container uppercase tracking-wider">Warehouse Alerts</span>
+                        <span className="material-symbols-outlined text-error icon-fill">warning</span>
+                    </div>
+                    <div className="mt-auto">
+                        <span className="text-4xl font-bold text-error">1</span>
+                        <p className="text-xs text-on-error-container mt-1">Temp variance in FRZ-C</p>
+                    </div>
+                </div>
+                <div className="bg-surface-container-low rounded-xl p-6 border border-outline-variant shadow-sm flex flex-col justify-between h-40">
+                    <div className="flex justify-between items-start">
+                        <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Samples Pending</span>
+                        <span className="material-symbols-outlined text-outline">send</span>
+                    </div>
+                    <div className="mt-auto">
+                        <span className="text-4xl font-bold">4</span>
+                        <p className="text-xs text-on-surface-variant mt-1">Awaiting courier</p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 flex flex-col gap-6">
+                    <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-sm">
+                        <h3 className="text-lg font-bold mb-6">Today's Material Flow</h3>
+                        <div className="flex gap-4 overflow-x-auto pb-2">
+                            {[
+                                { time: "08:00 AM", event: "Supplier Delivery", details: "Bergamot & Lavender", active: false },
+                                { time: "09:30 AM", event: "QC Intake Scan", details: "Lab B", active: true },
+                                { time: "11:00 AM", event: "Transfer", details: "Pending Clearance", active: false }
+                            ].map((step, idx) => (
+                                <div key={idx} className={`min-w-[180px] p-4 rounded-lg border ${step.active ? 'bg-primary/5 border-primary/30' : 'bg-surface-container-low border-outline-variant'}`}>
+                                    <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest block mb-1">{step.time}</span>
+                                    <p className={`font-bold ${step.active ? 'text-primary' : ''}`}>{step.event}</p>
+                                    <p className="text-xs text-outline mt-1">{step.details}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="bg-white rounded-xl border border-outline-variant overflow-hidden shadow-sm">
+                        <div className="p-4 border-b border-outline-variant flex justify-between items-center bg-surface-container-low">
+                            <h3 className="font-bold">QC Queue</h3>
+                            <Link href="/qc" className="text-primary text-xs font-bold uppercase tracking-widest flex items-center gap-1 hover:underline">View All <span className="material-symbols-outlined text-sm">arrow_forward</span></Link>
+                        </div>
+                        <table className="w-full text-left">
+                            <thead className="bg-surface-container-low text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
+                                <tr>
+                                    <th className="px-6 py-3">Material</th>
+                                    <th className="px-6 py-3">Lot ID</th>
+                                    <th className="px-6 py-3">Priority</th>
+                                    <th className="px-6 py-3">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="text-sm divide-y divide-outline-variant/30">
+                                <tr>
+                                    <td className="px-6 py-4 font-bold">Lavender Absolute</td>
+                                    <td className="px-6 py-4 text-outline font-mono">LOT-8992</td>
+                                    <td className="px-6 py-4">Normal</td>
+                                    <td className="px-6 py-4"><span className="bg-tertiary-fixed text-on-tertiary-fixed text-[10px] font-bold px-2 py-1 rounded-sm uppercase">Released</span></td>
+                                </tr>
+                                <tr>
+                                    <td className="px-6 py-4 font-bold">Bergamot Peel</td>
+                                    <td className="px-6 py-4 text-outline font-mono">INB-0041</td>
+                                    <td className="px-6 py-4 text-error font-bold">High</td>
+                                    <td className="px-6 py-4"><span className="bg-surface-variant text-on-surface-variant text-[10px] font-bold px-2 py-1 rounded-sm uppercase">Pending</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div className="flex flex-col gap-6">
+                    <div className="bg-surface-container-low rounded-xl p-6 border border-primary/20 shadow-sm flex flex-col relative overflow-hidden">
+                        <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-primary/5 rounded-full blur-3xl"></div>
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-10 h-10 rounded bg-primary text-on-primary flex items-center justify-center">
+                                <span className="material-symbols-outlined">smart_toy</span>
+                            </div>
+                            <h3 className="font-bold text-primary">AI Insight</h3>
+                        </div>
+                        <p className="text-sm text-on-surface-variant mb-6 font-bold bg-primary/5 p-3 border border-primary/20 rounded-sm italic">"AI detected 2 high-priority QC checks today."</p>
+                        <button className="w-full text-left bg-white px-4 py-3 rounded-lg border border-outline-variant hover:border-primary transition-all flex justify-between items-center group">
+                            <span className="text-sm font-bold group-hover:text-primary transition-colors">Review Suggestions</span>
+                            <span className="material-symbols-outlined text-outline group-hover:text-primary transition-colors">arrow_forward</span>
+                        </button>
+                    </div>
+                    <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-sm">
+                        <h3 className="font-bold mb-4">Recent Audit Events</h3>
+                        <div className="space-y-4">
+                            <div className="flex gap-4 border-b border-outline-variant/30 pb-4">
+                                <span className="material-symbols-outlined text-outline">edit_document</span>
+                                <div>
+                                    <p className="text-sm font-bold">COA Updated</p>
+                                    <p className="text-xs text-on-surface-variant">System Admin • 10m ago</p>
+                                </div>
+                            </div>
+                            <div className="flex gap-4">
+                                <span className="material-symbols-outlined text-outline">verified_user</span>
+                                <div>
+                                    <p className="text-sm font-bold">QC Approved</p>
+                                    <p className="text-xs text-on-surface-variant">Elena Dragan • 1h ago</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-      </Group>
-
-      <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
-        <Card withBorder padding="lg" radius="md">
-          <Text size="sm" c="dimmed" fw={500} tt="uppercase">
-            Pending QC
-          </Text>
-          <Text size="xl" fw={700} mt="sm">
-            12 Lots
-          </Text>
-        </Card>
-        
-        <Card withBorder padding="lg" radius="md">
-          <Text size="sm" c="dimmed" fw={500} tt="uppercase">
-            Warehouse Capacity
-          </Text>
-          <Text size="xl" fw={700} mt="sm">
-            84%
-          </Text>
-        </Card>
-
-        <Card withBorder padding="lg" radius="md">
-          <Text size="sm" c="dimmed" fw={500} tt="uppercase">
-            Active Dispatches
-          </Text>
-          <Text size="xl" fw={700} mt="sm">
-            3 Shipments
-          </Text>
-        </Card>
-
-        <Card withBorder padding="lg" radius="md">
-          <Text size="sm" c="dimmed" fw={500} tt="uppercase">
-            AI Operations
-          </Text>
-          <Text size="xl" fw={700} mt="sm">
-            System Healthy
-          </Text>
-        </Card>
-      </SimpleGrid>
-    </div>
-  );
+    );
 }

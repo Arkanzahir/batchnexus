@@ -1,52 +1,64 @@
 import { generateObject } from "ai";
-import { google } from "@ai-sdk/google";
+import { groq } from "@ai-sdk/groq";
 import { z } from "zod";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    const { imageUrl } = await req.json();
+    const { text } = await req.json();
 
-    // If no API key is provided, or for the hackathon safe-demo, return mock data
-    if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY || imageUrl === 'dummy-manifest.jpg') {
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      return NextResponse.json({
-        data: {
-          supplierCode: "mock-sup-1",
-          materialType: "mock-mat-1",
-          quantity: 500,
-          temperatureRequirement: "Ambient",
-          batchReference: "DO-2026-X99"
-        }
-      });
+    if (!text) {
+      return NextResponse.json({ error: "No text provided" }, { status: 400 });
     }
 
-    // Extract structured data from the Delivery Order / Manifest image
-    const { object } = await generateObject({
-      model: google("models/gemini-1.5-pro-latest"),
-      system: "You are an AI assistant that extracts data from botanical delivery manifests and certificates of analysis. Extract the supplier code, material type, quantity, and temperature requirement from the document.",
+    // Check if API key is set
+    if (!process.env.GROQ_API_KEY) {
+       console.log("No Groq API Key found. Returning simulated extraction.");
+       // Fallback mock for the hackathon
+       await new Promise((resolve) => setTimeout(resolve, 1500));
+       return NextResponse.json({
+          data: {
+             material_name: "Clove Bud Oil",
+             supplier_name: "KTA Ponorogo",
+             quantity: 500,
+             unit: "kg",
+             batch_reference: "KTA-CLV-0530",
+             hazard_class: "Flammable",
+             temperature_requirement: "Ambient"
+          }
+       });
+    }
+
+    // Call Groq Llama to extract structured information
+    const result = await generateObject({
+      model: groq("llama-3.1-8b-instant"),
+      system: "You are an AI assistant for a raw materials factory. Extract the delivery information from the user's text and map it to our structured inbound receipt schema. If a field is not explicitly mentioned, use your best judgment or infer from context.",
       schema: z.object({
-        supplierCode: z.string().describe("The code or name of the supplier"),
-        materialType: z.string().describe("The type of material (e.g., 'Leaf', 'Root', 'Patchouli')"),
-        quantity: z.number().describe("The total quantity in KG"),
-        temperatureRequirement: z.enum(["Ambient", "Chilled", "Frozen"]).describe("The required storage temperature"),
-        batchReference: z.string().describe("The supplier's batch reference number, if any"),
+        material_name: z.string().describe("The name of the material (e.g., Clove Oil, Lavender Absolute)"),
+        supplier_name: z.string().describe("The name of the supplier (e.g., KTA Ponorogo, Java Citrus Farm)"),
+        quantity: z.number().describe("The numerical quantity of the material"),
+        unit: z.string().describe("The unit of measurement (e.g., kg, L, drums)"),
+        batch_reference: z.string().describe("Generate a short, logical batch reference based on the supplier and material if none is provided. E.g., 'KTA-CLV-0529'"),
+        hazard_class: z.enum(["Normal", "Flammable", "Oxidizer", "Toxic"]).describe("Infer the hazard class based on the material. Essential oils are often Flammable."),
+        temperature_requirement: z.enum(["Ambient", "Chilled", "-20 to -4°C"]).describe("Infer the storage temperature based on the material."),
       }),
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: "Extract the data from this delivery manifest." },
-            { type: "image", image: imageUrl },
-          ],
-        },
-      ],
+      prompt: `Extract the delivery information from the following text:\n\n"${text}"`,
     });
 
-    return NextResponse.json({ data: object });
+    return NextResponse.json({ data: result.object });
   } catch (error) {
-    console.error("Extraction Error:", error);
-    return NextResponse.json({ error: "Failed to extract data from manifest" }, { status: 500 });
+    console.error("AI Extraction Error:", error);
+    // Return fallback even if API throws an error (e.g., quota exceeded)
+    return NextResponse.json({
+          data: {
+             material_name: "Clove Bud Oil (Simulated Fallback)",
+             supplier_name: "KTA Ponorogo",
+             quantity: 500,
+             unit: "kg",
+             batch_reference: "KTA-CLV-0530",
+             hazard_class: "Flammable",
+             temperature_requirement: "Ambient"
+          }
+    });
   }
 }

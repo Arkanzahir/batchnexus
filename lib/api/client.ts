@@ -1,6 +1,6 @@
 // DaaS REST API Client for Frontend
-const DAAS_URL = process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL;
-const DAAS_TOKEN = "Y45aktNq5TgbalfTlggMJ8ukwjwU3wdR"; // Use static token for hackathon demo
+// Routes through internal Next.js API proxy (/api/items/[collection])
+// which handles authentication and proxies to the external DaaS backend.
 
 export async function fetchItems<T>(
   collection: string,
@@ -20,11 +20,10 @@ export async function fetchItems<T>(
   if (options?.limit) params.set("limit", String(options.limit));
   if (options?.page) params.set("page", String(options.page));
 
-  const url = `${DAAS_URL}/api/items/${collection}${params.toString() ? '?' + params.toString() : ''}`;
+  const url = `/api/items/${collection}${params.toString() ? '?' + params.toString() : ''}`;
   
   const response = await fetch(url, {
     headers: {
-      "Authorization": `Bearer ${DAAS_TOKEN}`,
       "Content-Type": "application/json"
     }
   });
@@ -41,11 +40,10 @@ export async function createItem<T>(
   collection: string,
   data: Partial<T>,
 ): Promise<{ data: T }> {
-  const response = await fetch(`${DAAS_URL}/api/items/${collection}`, {
+  const response = await fetch(`/api/items/${collection}`, {
     method: "POST",
     headers: { 
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${DAAS_TOKEN}`
     },
     body: JSON.stringify(data),
   });

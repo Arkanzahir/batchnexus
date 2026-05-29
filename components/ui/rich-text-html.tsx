@@ -106,7 +106,6 @@ export function RichTextHTML({
       }),
     ],
     content: value,
-    // @ts-expect-error — auto-suppressed: Binding element 'editor' implicitly has an 'any' type.
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
       onChange?.(html);

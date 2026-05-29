@@ -6,18 +6,11 @@ import {
 } from "@mantine/core";
 import { ModalsProvider } from "@mantine/modals";
 import { Notifications } from "@mantine/notifications";
-import { Inter } from "next/font/google";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
-import "./design-tokens.css";
 import "./globals.css";
 import { theme } from "@/lib/theme";
-import { MainShell } from "@/components/AppShell/MainShell";
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"]
-});
+import { PageLayout } from "@/components/Layout/PageLayout";
 
 export const metadata: Metadata = {
   title: "Sima Arôme - BatchNexus Control Tower",
@@ -36,12 +29,23 @@ export default function RootLayout({
           name="viewport"
           content="minimum-scale=1, initial-scale=1, width=device-width, user-scalable=no"
         />
+        {/* Google Fonts */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Open+Sans:wght@400;600&family=Playfair+Display:ital@0;1&display=swap"
+          rel="stylesheet"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
+          rel="stylesheet"
+        />
       </head>
-      <body className={inter.variable}>
+      <body className="font-sans antialiased">
         <MantineProvider theme={theme} defaultColorScheme="auto">
           <ModalsProvider>
             <Notifications position="top-right" />
-            <MainShell>{children}</MainShell>
+            <PageLayout>{children}</PageLayout>
           </ModalsProvider>
         </MantineProvider>
       </body>
