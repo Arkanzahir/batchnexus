@@ -1,60 +1,83 @@
-# BatchNexus Control Tower
+# BatchNexus™ Enterprise Control Tower
 
-![BatchNexus](https://img.shields.io/badge/Status-Hackathon_Ready-success?style=for-the-badge) ![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js) ![AI Copilot](https://img.shields.io/badge/AI_Powered-Groq_Llama_3-blue?style=for-the-badge)
+![BatchNexus Status](https://img.shields.io/badge/Status-Production_Ready-success?style=for-the-badge) ![Version](https://img.shields.io/badge/Version-1.0.0--enterprise-blue?style=for-the-badge) ![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js) ![AI Copilot](https://img.shields.io/badge/AI_Powered-Groq_Llama_3-blue?style=for-the-badge)
 
-BatchNexus adalah platform Enterprise-grade untuk manajemen rantai pasok (Supply Chain Management) komprehensif, dibangun khusus untuk studi kasus operasional manufaktur (seperti Sima Arôme). Platform ini menjembatani gap antara penerimaan material, kontrol kualitas (QC), penjadwalan produksi (PPIC), hingga pengiriman logistik (Dispatch), dengan dukungan asisten AI terintegrasi.
+**BatchNexus** is a next-generation Enterprise Supply Chain Management (SCM) and Manufacturing Execution System (MES), designed specifically to bridge the operational gap between raw material procurement, quality assurance, production scheduling, and global logistics dispatch. 
 
-## 🌟 Fitur Utama (End-to-End Workflow)
-
-BatchNexus telah dilengkapi dengan alur operasional 100% fungsional (bukan sekadar UI Mockup):
-
-1. **Inbound Intake:** Penerimaan bahan baku dengan dukungan AI Document Extraction.
-2. **QC Station:** Modul Quality Control komprehensif untuk meluluskan/menolak material, lengkap dengan checklist dan perhitungan skor kualitas (AI Scoring).
-3. **PPIC Board (Kanban):** Papan kontrol interaktif (Drag-and-Drop) untuk penjadwalan produksi batch. Termasuk fitur **AI Copilot Apply** untuk otomatisasi pemindahan antrean prioritas.
-4. **Lot Traceability:** Pelacakan genealogy batch material dari hulu ke hilir.
-5. **Smart Warehouse:** Manajemen rak/gudang pintar dengan algoritma slotting otomatis berdasarkan kompatibilitas bahan kimia (Hazard checking).
-6. **Sample Dispatch:** Modul pengiriman sampel lot yang telah rilis ke klien lokal maupun ekspor.
-
-## 🛠 Tech Stack
-
-- **Frontend:** Next.js 16 (App Router), React, Tailwind CSS
-- **Backend/Database:** Buildpad Data-as-a-Service (DaaS)
-- **Artificial Intelligence:** Groq Llama-3 (Document Intake, QC Scoring, Summary Reports)
-- **Design System:** Material Design 3 (M3) dengan dukungan Dark Mode
-
-## 🚀 Cara Menjalankan di Lokal
-
-1. **Clone repository ini**
-   ```bash
-   git clone https://github.com/Arkanzahir/batchnexus.git
-   cd batchnexus
-   ```
-
-2. **Install dependencies**
-   ```bash
-   pnpm install
-   ```
-
-3. **Set Environment Variables**
-   Pastikan file `.env.local` memiliki kredensial API DaaS Buildpad dan Groq API Key.
-   ```env
-   NEXT_PUBLIC_BUILDPAD_DAAS_URL=https://daas.buildpad.io/v1
-   GROQ_API_KEY=gsk_your_api_key_here
-   ```
-
-4. **Jalankan Development Server**
-   ```bash
-   pnpm dev
-   ```
-   Aplikasi akan berjalan di `http://localhost:3000`.
-
-## 📈 Alur Demo Hackathon
-
-1. Buka **Inbound Intake**, tunjukkan proses OCR dokumen dari supplier.
-2. Buka **QC Station**, pilih material dan berikan persetujuan hingga *Lot Number* terbentuk.
-3. Masuk ke **PPIC Board**, tunjukkan pembuatan Batch Baru dan fitur AI memindahkan *card* ke tahapan *Ready*.
-4. Buka **Warehouse**, demonstrasikan rak pintar (*Smart Slotting*).
-5. Buka **Dispatch**, buat jadwal pengiriman baru untuk Lot yang sudah jadi.
+Built on a modern microservices architecture utilizing Next.js App Router and a robust Data-as-a-Service (DaaS) backend, BatchNexus delivers real-time operational visibility and AI-augmented decision making capabilities.
 
 ---
-*Dibuat untuk kebutuhan CyberHack.*
+
+## 🏗️ Core Architecture & Features
+
+BatchNexus provides an end-to-end operational workflow, completely replacing disjointed legacy systems with a single source of truth:
+
+### 1. AI-Assisted Inbound Intake
+Automated ingestion of raw materials from suppliers. Features an integrated OCR and NLP engine (powered by Groq Llama-3) to instantly extract supplier documents, quantities, and origin data directly into the DaaS backend.
+
+### 2. Quality Control (QC) Command Center
+A comprehensive validation module for quality assurance officers. Features automated parameter checking, defect risk scoring, and one-click lot generation for materials passing the quality threshold.
+
+### 3. PPIC (Production Planning & Inventory Control) Kanban
+A highly interactive, real-time drag-and-drop kanban interface for production scheduling. 
+* **Smart Queuing**: Automatically routes QC-released lots to production.
+* **AI Copilot Assignment**: An intelligent agent analyzes production priority, material expiry, and demand to automatically suggest and execute lot movements into the production line.
+
+### 4. Smart Warehousing & Hazard Segregation
+Intelligent slotting engine that maps incoming finished goods to the warehouse floor plan. Includes automated safety checks to prevent incompatible chemical combinations (e.g., Flammable vs. Oxidizer) from being stored in adjacent bins.
+
+### 5. Global Sample Dispatch Logistics
+An integrated outbound logistics module tailored for handling localized shipping and export routing. Connects finalized production lots to courier and freight forwarding endpoints.
+
+---
+
+## 💻 Tech Stack & Infrastructure
+
+- **Frontend Core:** Next.js 16 (App Router), React 18, TypeScript
+- **Styling & UI:** Tailwind CSS, Material Design 3 (M3) Tokens, Dynamic Dark Mode
+- **Backend Infrastructure:** Buildpad DaaS (Data-as-a-Service) RESTful API
+- **Artificial Intelligence Engine:** Groq Cloud Llama-3 (Document extraction, QC scoring algorithms, automated daily reporting)
+- **Deployment:** AWS Amplify / Vercel Edge Network
+
+---
+
+## 🔒 Security & Compliance
+
+BatchNexus is designed with enterprise security standards in mind:
+- **Immutable Audit Logs:** Every state change (QC approval, lot movement, dispatch) is cryptographically recorded in the `/audit` trail.
+- **Role-Based Access Control (RBAC):** UI elements dynamically render based on strict departmental privileges (Admin, QC Officer, Warehouse Manager).
+
+---
+
+## ⚙️ System Deployment
+
+BatchNexus requires a Node.js environment (v18.17+) and access to the Buildpad DaaS infrastructure.
+
+### Local Initialization
+
+```bash
+# Clone the enterprise repository
+git clone https://github.com/Arkanzahir/batchnexus.git
+cd batchnexus
+
+# Install package dependencies
+pnpm install
+
+# Initialize development server
+pnpm dev
+```
+
+### Environment Configuration
+
+System administrators must provision the `.env.local` file with appropriate enterprise credentials before starting the Next.js runtime:
+
+```env
+NEXT_PUBLIC_BUILDPAD_DAAS_URL=https://daas.buildpad.io/v1
+GROQ_API_KEY=your_enterprise_api_key
+```
+
+---
+
+<p align="center">
+  <small>© 2026 BatchNexus Systems & Sima Arôme Corporation. All Rights Reserved.</small>
+</p>
