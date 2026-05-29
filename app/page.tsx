@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { fetchItems } from "@/lib/api/client";
 
 export default function DashboardPage() {
-    const [stats, setStats] = useState({ inbound: 0, pendingQc: 0, released: 0 });
+    const [stats, setStats] = useState({ inbound: 0, pendingQc: 0, released: 0, samplesPending: 0 });
     const [recentLots, setRecentLots] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -21,11 +21,13 @@ export default function DashboardPage() {
 
             const pendingQc = lotsRes.data.filter((l: any) => l.status === "Pending QC").length;
             const released = lotsRes.data.filter((l: any) => l.status === "QC Released").length;
+            const samplesPending = lotsRes.data.filter((l: any) => ["Ready", "Stored", "QC Released"].includes(l.status)).length;
 
             setStats({
                 inbound: inboundToday,
                 pendingQc,
-                released
+                released,
+                samplesPending
             });
             setRecentLots(lotsRes.data.slice(0, 5));
             setLoading(false);
@@ -103,8 +105,8 @@ export default function DashboardPage() {
                         <span className="material-symbols-outlined text-outline">send</span>
                     </div>
                     <div className="mt-auto">
-                        <span className="text-4xl font-bold">4</span>
-                        <p className="text-xs text-on-surface-variant mt-1">Awaiting courier</p>
+                        <span className="text-4xl font-bold">{loading ? "..." : stats.samplesPending}</span>
+                        <p className="text-xs text-on-surface-variant mt-1">Available to dispatch</p>
                     </div>
                 </div>
             </div>

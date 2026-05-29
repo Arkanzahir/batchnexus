@@ -17,6 +17,7 @@ export const Sidebar = () => {
         { path: "/ppic", label: "PPIC Board", icon: "view_kanban" },
         { path: "/lots", label: "Lots", icon: "inventory_2" },
         { path: "/warehouse", label: "Warehouse", icon: "warehouse" },
+        { path: "/dispatch", label: "Dispatch", icon: "send" },
         { path: "/copilot", label: "Copilot", icon: "smart_toy" },
         { path: "/audit", label: "Audit Log", icon: "history_edu" },
     ];
