@@ -14,10 +14,59 @@ export default function InboundNewPage() {
     const [submitting, setSubmitting] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
 
+    // Validation state for material/supplier lookup
+    const [validation, setValidation] = useState<{
+        materialFound: boolean | null;
+        supplierFound: boolean | null;
+        materialMatch: string | null;
+        supplierMatch: string | null;
+        checking: boolean;
+    }>({ materialFound: null, supplierFound: null, materialMatch: null, supplierMatch: null, checking: false });
+
+    // Validate extracted data against DaaS master data
+    const validateAgainstDaaS = async (extracted: any) => {
+        setValidation(prev => ({ ...prev, checking: true }));
+        try {
+            const [materialsRes, suppliersRes] = await Promise.all([
+                fetchItems<any>("materials"),
+                fetchItems<any>("suppliers"),
+            ]);
+
+            let materialFound = false;
+            let supplierFound = false;
+            let materialMatch: string | null = null;
+            let supplierMatch: string | null = null;
+
+            if (extracted.material_name && materialsRes.data) {
+                const matName = extracted.material_name.toLowerCase();
+                const match = materialsRes.data.find((m: any) =>
+                    m.name?.toLowerCase().includes(matName) || matName.includes(m.name?.toLowerCase())
+                );
+                materialFound = !!match;
+                materialMatch = match?.name || null;
+            }
+
+            if (extracted.supplier_name && suppliersRes.data) {
+                const supName = extracted.supplier_name.toLowerCase();
+                const match = suppliersRes.data.find((s: any) =>
+                    s.name?.toLowerCase().includes(supName) || supName.includes(s.name?.toLowerCase())
+                );
+                supplierFound = !!match;
+                supplierMatch = match?.name || null;
+            }
+
+            setValidation({ materialFound, supplierFound, materialMatch, supplierMatch, checking: false });
+        } catch (err) {
+            console.warn("Validation lookup failed:", err);
+            setValidation({ materialFound: null, supplierFound: null, materialMatch: null, supplierMatch: null, checking: false });
+        }
+    };
+
     const handleExtract = async () => {
         if (!textInput) return;
         setExtracting(true);
         setExtractedData(null);
+        setValidation({ materialFound: null, supplierFound: null, materialMatch: null, supplierMatch: null, checking: false });
         try {
             const res = await fetch("/api/ai/extract-manifest", {
                 method: "POST",
@@ -27,6 +76,8 @@ export default function InboundNewPage() {
             const data = await res.json();
             if (data.data) {
                 setExtractedData(data.data);
+                // Immediately validate against DaaS
+                validateAgainstDaaS(data.data);
             }
         } catch (error) {
             console.error("Extraction error", error);
@@ -171,6 +222,54 @@ export default function InboundNewPage() {
                                         <span className="font-bold">Review needed: </span>
                                         {extractedData.fields_needing_review.join(", ")} could not be fully extracted.
                                     </div>
+                                </div>
+                            )}
+
+                            {/* DaaS Master Data Validation */}
+                            {validation.checking ? (
+                                <div className="bg-blue-50 border border-blue-200 text-blue-800 p-3 rounded-lg mb-4 flex items-center gap-2 text-xs">
+                                    <span className="material-symbols-outlined text-[16px] animate-spin">sync</span>
+                                    <span className="font-bold">Validating against Central ERP Database...</span>
+                                </div>
+                            ) : (validation.materialFound !== null || validation.supplierFound !== null) && (
+                                <div className="space-y-2 mb-4">
+                                    {/* Material Validation */}
+                                    {validation.materialFound === true ? (
+                                        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-lg flex items-center gap-2 text-xs">
+                                            <span className="material-symbols-outlined text-[16px]">verified</span>
+                                            <div>
+                                                <span className="font-bold">Material Verified: </span>
+                                                &quot;{extractedData.material_name}&quot; matched to registered material <span className="font-bold">{validation.materialMatch}</span> in Central Database.
+                                            </div>
+                                        </div>
+                                    ) : validation.materialFound === false ? (
+                                        <div className="bg-red-50 border border-red-300 text-red-800 p-3 rounded-lg flex items-center gap-2 text-xs">
+                                            <span className="material-symbols-outlined text-[16px]">gpp_maybe</span>
+                                            <div>
+                                                <span className="font-bold">⚠ Unregistered Material: </span>
+                                                &quot;{extractedData.material_name}&quot; is <span className="font-bold underline">NOT found</span> in Central ERP Database. This material may be unauthorized or illegal. Contact Management before proceeding.
+                                            </div>
+                                        </div>
+                                    ) : null}
+
+                                    {/* Supplier Validation */}
+                                    {validation.supplierFound === true ? (
+                                        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-lg flex items-center gap-2 text-xs">
+                                            <span className="material-symbols-outlined text-[16px]">verified</span>
+                                            <div>
+                                                <span className="font-bold">Supplier Verified: </span>
+                                                &quot;{extractedData.supplier_name}&quot; matched to registered supplier <span className="font-bold">{validation.supplierMatch}</span>.
+                                            </div>
+                                        </div>
+                                    ) : validation.supplierFound === false ? (
+                                        <div className="bg-red-50 border border-red-300 text-red-800 p-3 rounded-lg flex items-center gap-2 text-xs">
+                                            <span className="material-symbols-outlined text-[16px]">gpp_maybe</span>
+                                            <div>
+                                                <span className="font-bold">⚠ Unregistered Supplier: </span>
+                                                &quot;{extractedData.supplier_name}&quot; is <span className="font-bold underline">NOT found</span> in Central ERP Database. This supplier may be unauthorized.
+                                            </div>
+                                        </div>
+                                    ) : null}
                                 </div>
                             )}
 
