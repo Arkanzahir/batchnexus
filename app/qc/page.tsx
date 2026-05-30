@@ -67,41 +67,31 @@ export default function QCStationPage() {
             // 1. Update receipt status
             await updateItem("inbound_receipts", selectedTask.id, { status: "QC Released" });
 
-            // 2. Create QC Inspection Record
-            const qcRecord = await createItem("qc_inspections", {
+            // 2. Create QC Inspection Record (matching actual DaaS schema)
+            const lotNo = `LOT-2026-${String(Math.floor(Math.random() * 900) + 100)}`;
+            await createItem("qc_inspections", {
                 receipt_id: selectedTask.id,
-                colour_score: 87,
-                defect_risk: "Low",
-                foreign_matter_risk: "Low",
-                recommendation: "Pass with human review",
-                confidence: 0.86,
+                ai_color_score: 87,
+                ai_defect_risk: 0.08,
+                ai_foreign_matter_risk: 0.05,
+                ai_recommendation: "Pass with human review",
                 human_decision: "QC Released",
-                inspected_by: "Current User",
-                date_created: new Date().toISOString()
+                lot_number_generated: lotNo,
+                comments: `Approved by ${role}. Quality meets standards.`,
             });
 
-            // 3. Create Lot Record
-            const lotNo = `LOT-2026-${String(Math.floor(Math.random() * 900) + 100)}`;
+            // 3. Create Lot Record (matching actual DaaS schema)
             await createItem("lots", {
                 lot_number: lotNo,
-                source_receipt_id: selectedTask.id,
+                receipt_id: selectedTask.id,
                 material_id: selectedTask.material_id,
                 quantity: selectedTask.quantity,
                 status: "Awaiting Slot",
-                date_created: new Date().toISOString()
             });
 
-            // 4. Create Audit Log
-            await createItem("audit_logs", {
-                timestamp: new Date().toISOString(),
-                actor: "Current User",
-                role: role,
-                action: "Approved QC release",
-                entity: (qcRecord.data as any).id || "QC Record",
-                change_detail: `Status changed to QC Released. Generated lot ${lotNo}.`
-            });
+            // Audit log is tracked automatically by DaaS Activity
 
-            alert(`✅ QC release approved and audit-logged. Lot ${lotNo} created.`);
+            alert(`✅ QC release approved. Lot ${lotNo} created.`);
             setShowConfirm(false);
             setSelectedTask(null);
             await loadData();
