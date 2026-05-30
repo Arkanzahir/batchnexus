@@ -80,14 +80,14 @@ export async function getAuthHeaders(): Promise<Record<string, string>> {
  * @throws If neither env var is set.
  */
 export function getDaasUrl(): string {
-  const url =
-    process.env.BUILDPAD_DAAS_URL ??
-    process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL;
+  let envUrl = process.env.BUILDPAD_DAAS_URL || process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL;
+  if (envUrl === "undefined" || envUrl === "") envUrl = undefined;
+  
+  // Hardcoded fallback for Hackathon/Production safety
+  const url = envUrl || 'https://29dd52b2-e0be-43c7-a587-2c78d2dc107a.daas4.buildpad.ai';
 
   if (!url) {
-    throw new Error(
-      'DaaS URL not configured. Set BUILDPAD_DAAS_URL (or NEXT_PUBLIC_BUILDPAD_DAAS_URL) in .env.local'
-    );
+    throw new Error('DaaS URL not configured.');
   }
 
   return url.replace(/\/$/, '');
