@@ -91,6 +91,25 @@ export default function AuditPage() {
                     <p className="text-on-surface-variant mt-1">Immutable ledger of all system actions and AI-generated insights.</p>
                 </div>
                 <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => {
+                            let csv = "Timestamp,Actor,Role,Action,Entity,Change Detail\n";
+                            filteredAudits.forEach((a: any) => {
+                                csv += `"${a.timestamp}","${a.actor}","${a.role}","${a.action}","${a.entity}","${a.change_detail}"\n`;
+                            });
+                            const blob = new Blob([csv], { type: "text/csv" });
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement("a");
+                            link.href = url;
+                            link.download = `audit_log_${new Date().toISOString().split('T')[0]}.csv`;
+                            link.click();
+                            URL.revokeObjectURL(url);
+                        }}
+                        className="font-bold py-2.5 px-5 rounded-sm text-xs uppercase tracking-widest transition-all flex items-center gap-2 shadow-sm border border-outline-variant bg-white text-on-surface hover:border-primary hover:text-primary"
+                    >
+                        <span className="material-symbols-outlined text-[16px]">download</span>
+                        Export CSV
+                    </button>
                     <button 
                         onClick={handleGenerateSummary}
                         disabled={summaryLoading || !hasPermission}

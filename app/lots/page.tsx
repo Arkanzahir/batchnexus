@@ -172,8 +172,70 @@ export default function LotsTraceabilityPage() {
                                     <button 
                                         className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-1 hover:underline mt-2"
                                         onClick={() => {
-                                            alert("Trace report exported to PDF.");
-                                            // Mock audit event for exporting
+                                            // Generate real CSV export
+                                            const lot = selectedLot;
+                                            const receipt = receipts.get(lot.source_receipt_id);
+                                            const mat = materials.get(lot.material_id);
+                                            const sup = receipt ? suppliers.get(receipt.supplier_id) : null;
+                                            const lotQc = qc.filter((q: any) => q.receipt_id === lot.source_receipt_id);
+                                            const lotDisp = dispatches.filter((d: any) => d.lot_id === lot.id);
+                                            const lotAudits = audits.filter((a: any) =>
+                                                a.entity === lot.id || a.entity === lot.source_receipt_id ||
+                                                (a.change_detail && a.change_detail.includes(lot.lot_number))
+                                            );
+
+                                            let csv = "BATCHNEXUS TRACEABILITY REPORT\n";
+                                            csv += `Generated:,${new Date().toISOString()}\n\n`;
+                                            csv += "LOT INFORMATION\n";
+                                            csv += `Lot Number:,${lot.lot_number}\n`;
+                                            csv += `Material:,${mat?.name || getMaterialName(lot.material_id)}\n`;
+                                            csv += `Supplier:,${sup?.name || getSupplierName(lot.source_receipt_id)}\n`;
+                                            csv += `Quantity:,${lot.quantity}\n`;
+                                            csv += `Status:,${lot.status}\n`;
+                                            csv += `Location:,${lot.current_location || "N/A"}\n`;
+                                            csv += `Created:,${lot.date_created}\n\n`;
+
+                                            if (receipt) {
+                                                csv += "SOURCE RECEIPT\n";
+                                                csv += `Receipt No:,${receipt.receipt_no}\n`;
+                                                csv += `Batch Ref:,${receipt.batch_reference}\n`;
+                                                csv += `Hazard:,${receipt.hazard_class}\n`;
+                                                csv += `Temperature:,${receipt.temperature_requirement}\n\n`;
+                                            }
+
+                                            if (lotQc.length > 0) {
+                                                csv += "QC INSPECTION\n";
+                                                csv += "ID,Colour Score,Defect Risk,Foreign Matter,Decision,Confidence\n";
+                                                lotQc.forEach((q: any) => {
+                                                    csv += `${q.id},${q.colour_score},${q.defect_risk},${q.foreign_matter_risk},${q.human_decision},${q.confidence}\n`;
+                                                });
+                                                csv += "\n";
+                                            }
+
+                                            if (lotDisp.length > 0) {
+                                                csv += "DISPATCHES\n";
+                                                csv += "ID,Customer,Destination,Status,Quantity\n";
+                                                lotDisp.forEach((d: any) => {
+                                                    csv += `${d.id},${d.customer_name},${d.destination},${d.status},${d.quantity_sample}\n`;
+                                                });
+                                                csv += "\n";
+                                            }
+
+                                            if (lotAudits.length > 0) {
+                                                csv += "AUDIT TRAIL\n";
+                                                csv += "Timestamp,Actor,Role,Action,Detail\n";
+                                                lotAudits.forEach((a: any) => {
+                                                    csv += `${a.timestamp},${a.actor},${a.role},${a.action},"${a.change_detail}"\n`;
+                                                });
+                                            }
+
+                                            const blob = new Blob([csv], { type: "text/csv" });
+                                            const url = URL.createObjectURL(blob);
+                                            const a = document.createElement("a");
+                                            a.href = url;
+                                            a.download = `traceability_${lot.lot_number}.csv`;
+                                            a.click();
+                                            URL.revokeObjectURL(url);
                                         }}
                                     >
                                         <span className="material-symbols-outlined text-[14px]">download</span> Export Trace Report

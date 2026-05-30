@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { createItem } from "@/lib/api/client";
 import { useRole } from "@/lib/rbac";
+import { getDemoDB } from "@/lib/demoStore";
 
 interface SourceRecord {
     type: string;
@@ -16,12 +17,175 @@ interface Message {
     sources?: SourceRecord[];
 }
 
+function searchDemoDB(query: string): { content: string; sources: SourceRecord[] } {
+    const q = query.toLowerCase();
+    const db = getDemoDB();
+
+    // LOT queries
+    if (q.includes("lot-2026-051") || (q.includes("lot") && q.includes("051"))) {
+        const lot = db.lots?.find((l: any) => l.lot_number === "LOT-2026-051") || db.lots?.[0];
+        if (lot) {
+            return {
+                content: `${lot.lot_number} is currently in status "${lot.status}"${lot.current_location ? ` at location ${lot.current_location}` : ""}. It contains ${db.materials?.find((m: any) => m.id === lot.material_id)?.name || "material"} from ${db.suppliers?.[0]?.name || "supplier"}. QC was released on 28 May 2026 and ${db.sample_dispatches?.filter((d: any) => d.lot_id === lot.id).length || 0} sample dispatch records are linked.`,
+                sources: [
+                    { type: "Lot record", id: lot.lot_number, desc: `Status: ${lot.status}` },
+                    ...(lot.current_location ? [{ type: "Warehouse move", id: "MOVE-2026-001", desc: `Location: ${lot.current_location}` }] : []),
+                    { type: "QC inspection", id: "QC-2026-002", desc: "Approved release" },
+                ]
+            };
+        }
+    }
+
+    // Where is [LOT-XXX] queries
+    if (q.includes("where") || q.includes("dimana") || q.includes("lokasi")) {
+        const lotMatch = q.match(/lot[- ]?2026[- ]?(\d+)/i);
+        if (lotMatch) {
+            const lotNum = `LOT-2026-${lotMatch[1]}`;
+            const lot = db.lots?.find((l: any) => l.lot_number === lotNum);
+            if (lot) {
+                return {
+                    content: `${lot.lot_number} is in status "${lot.status}"${lot.current_location ? ` at ${lot.current_location}` : ". No warehouse slot assigned yet"}.`,
+                    sources: [{ type: "Lot record", id: lot.lot_number, desc: `Status: ${lot.status}` }]
+                };
+            }
+        }
+        // Check for any lot reference
+        for (const lot of (db.lots || [])) {
+            if (q.includes(lot.lot_number?.toLowerCase())) {
+                return {
+                    content: `${lot.lot_number} is in status "${lot.status}"${lot.current_location ? ` at ${lot.current_location}` : ""}.`,
+                    sources: [{ type: "Lot record", id: lot.lot_number, desc: `Status: ${lot.status}` }]
+                };
+            }
+        }
+    }
+
+    // Sample/dispatch queries
+    if (q.includes("sample") || q.includes("dispatch") || q.includes("kirim")) {
+        const dispatches = db.sample_dispatches || [];
+        if (dispatches.length > 0) {
+            const dspList = dispatches.map((d: any) => `${d.id} → ${d.customer_name} (${d.status})`).join(", ");
+            return {
+                content: `There are ${dispatches.length} sample dispatch records: ${dspList}.`,
+                sources: dispatches.map((d: any) => ({ type: "Dispatch", id: d.id, desc: d.customer_name }))
+            };
+        }
+        return { content: "No sample dispatch records found in the system.", sources: [] };
+    }
+
+    // Blocked queries
+    if (q.includes("blocked") || q.includes("blok") || q.includes("ditolak")) {
+        const blocked = (db.lots || []).filter((l: any) => l.status === "Blocked");
+        const holdQC = (db.warehouse_zones || []).filter((z: any) => z.status === "QC hold");
+        return {
+            content: `There are ${blocked.length} blocked lots and ${holdQC.length} zone(s) under quarantine (QC hold).`,
+            sources: [
+                ...blocked.map((l: any) => ({ type: "Lot", id: l.lot_number, desc: "Blocked" })),
+                ...holdQC.map((z: any) => ({ type: "Zone", id: z.id, desc: z.name }))
+            ]
+        };
+    }
+
+    // Cold-chain / temperature alerts
+    if (q.includes("cold") || q.includes("suhu") || q.includes("temperature") || q.includes("alert") || q.includes("dingin")) {
+        const alerts = (db.warehouse_zones || []).filter((z: any) => z.status === "Cold-chain Alert");
+        if (alerts.length > 0) {
+            const alertDetail = alerts.map((z: any) => `${z.id} (${z.name}) at ${z.current_temperature}°C`).join(", ");
+            return {
+                content: `There are ${alerts.length} active cold-chain alert(s): ${alertDetail}. This is outside the safe threshold.`,
+                sources: alerts.map((z: any) => ({ type: "Sensor reading", id: z.id, desc: `${z.current_temperature}°C` }))
+            };
+        }
+        return { content: "No cold-chain alerts at this time. All zones operating within normal temperature ranges.", sources: [] };
+    }
+
+    // Receipt queries
+    if (q.includes("rec-") || q.includes("receipt") || q.includes("inbound") || q.includes("penerimaan")) {
+        const recMatch = q.match(/rec[- ]?2026[- ]?(\d+)/i);
+        if (recMatch) {
+            const recNo = `REC-2026-${recMatch[1]}`;
+            const receipt = (db.inbound_receipts || []).find((r: any) => r.receipt_no === recNo);
+            if (receipt) {
+                return {
+                    content: `${receipt.receipt_no} has status "${receipt.status}". Quantity: ${receipt.quantity} ${receipt.unit}. Batch ref: ${receipt.batch_reference}.`,
+                    sources: [{ type: "Receipt record", id: receipt.receipt_no, desc: `Status: ${receipt.status}` }]
+                };
+            }
+        }
+        const receipts = db.inbound_receipts || [];
+        return {
+            content: `There are ${receipts.length} inbound receipt(s) in the system. Statuses: ${receipts.map((r: any) => `${r.receipt_no}: ${r.status}`).join(", ")}.`,
+            sources: receipts.map((r: any) => ({ type: "Receipt", id: r.receipt_no, desc: r.status }))
+        };
+    }
+
+    // QC queries
+    if (q.includes("qc") || q.includes("quality") || q.includes("inspek")) {
+        const qcRecords = db.qc_inspections || [];
+        if (qcRecords.length > 0) {
+            return {
+                content: `There are ${qcRecords.length} QC inspection record(s). Latest: colour score ${qcRecords[0].colour_score}/100, recommendation "${qcRecords[0].recommendation}", decision "${qcRecords[0].human_decision}".`,
+                sources: qcRecords.map((q: any) => ({ type: "QC inspection", id: q.id, desc: q.human_decision }))
+            };
+        }
+        return { content: "No QC inspection records found.", sources: [] };
+    }
+
+    // Warehouse queries
+    if (q.includes("warehouse") || q.includes("gudang") || q.includes("zone") || q.includes("zona")) {
+        const zones = db.warehouse_zones || [];
+        const zoneList = zones.map((z: any) => `${z.id}: ${z.name} (${z.status})`).join(", ");
+        return {
+            content: `The warehouse has ${zones.length} zones: ${zoneList}.`,
+            sources: zones.map((z: any) => ({ type: "Zone", id: z.id, desc: z.status }))
+        };
+    }
+
+    // Material queries
+    if (q.includes("material") || q.includes("bahan")) {
+        const mats = db.materials || [];
+        return {
+            content: `There are ${mats.length} material(s) registered: ${mats.map((m: any) => `${m.name} (${m.hazard_class})`).join(", ")}.`,
+            sources: mats.map((m: any) => ({ type: "Material", id: m.id, desc: m.name }))
+        };
+    }
+
+    // Audit queries
+    if (q.includes("audit") || q.includes("log") || q.includes("riwayat")) {
+        const audits = db.audit_logs || [];
+        const recent = audits.slice(0, 3);
+        return {
+            content: `There are ${audits.length} audit log entries. Most recent: ${recent.map((a: any) => `"${a.action}" by ${a.actor}`).join(", ")}.`,
+            sources: recent.map((a: any) => ({ type: "Audit", id: a.id, desc: a.action }))
+        };
+    }
+
+    // General status / summary
+    if (q.includes("status") || q.includes("summary") || q.includes("ringkasan") || q.includes("today") || q.includes("hari ini")) {
+        const lots = db.lots || [];
+        const receipts = db.inbound_receipts || [];
+        const dispatches = db.sample_dispatches || [];
+        return {
+            content: `Current system status: ${receipts.length} inbound receipts, ${lots.length} lots (${lots.filter((l: any) => l.status === "Stored").length} stored, ${lots.filter((l: any) => l.status === "Pending QC").length} pending QC), ${dispatches.length} dispatches.`,
+            sources: [
+                { type: "Summary", id: "SYS", desc: "System overview" }
+            ]
+        };
+    }
+
+    // Fallback: try to find anything matching in the DB
+    return {
+        content: `I searched the operational database but couldn't find a specific match for your query. Try asking about a specific lot number (e.g., LOT-2026-051), receipt (REC-2026-002), warehouse zones, QC status, cold-chain alerts, or dispatches.`,
+        sources: []
+    };
+}
+
 export default function CopilotPage() {
     const { role } = useRole();
     const [messages, setMessages] = useState<Message[]>([{
         id: "1",
         role: "assistant",
-        content: "Hello! I am Ops Copilot. I can help you query real-time operational records, audit logs, and status updates across the facility."
+        content: "Hello! I am Ops Copilot. I can help you query real-time operational records, audit logs, and status updates across the facility. Try asking about a lot, material, receipt, or warehouse zone."
     }]);
     const [input, setInput] = useState("");
     const [isThinking, setIsThinking] = useState(false);
@@ -31,78 +195,17 @@ export default function CopilotPage() {
         "Which samples used LOT-2026-051?",
         "What batches are blocked today?",
         "Any cold-chain alerts today?",
-        "Is REC-2026-002 ready for production?"
+        "Show system status summary",
     ];
 
-    const getDeterministicAnswer = (query: string): { content: string, sources: SourceRecord[] } => {
-        const q = query.toLowerCase();
-        
-        if (q.includes("where is lot-2026-051")) {
-            return {
-                content: "LOT-2026-051 is stored in HAZ-D-04. It contains Citrus Peel Extract from Java Citrus Farm. QC was released on 28 May 2026 at 10:42 WIB and two sample dispatch records are linked to this lot.",
-                sources: [
-                    { type: "Lot record", id: "LOT-2026-051", desc: "Stored in HAZ-D-04" },
-                    { type: "Warehouse move", id: "MOVE-2026-001", desc: "Assigned by Andi Saputra" },
-                    { type: "QC inspection", id: "QC-2026-002", desc: "Approved release" },
-                    { type: "Dispatch records", id: "DSP-001, DSP-002", desc: "Samples" }
-                ]
-            };
-        }
-        
-        if (q.includes("which samples used lot-2026-051")) {
-            return {
-                content: "LOT-2026-051 has been used in two sample dispatches: DSP-001 (Export — Singapore to AromaWell Singapore) and DSP-002 (Local — Jakarta to Nusantara Beverage Lab).",
-                sources: [
-                    { type: "Dispatch", id: "DSP-001", desc: "AromaWell Singapore" },
-                    { type: "Dispatch", id: "DSP-002", desc: "Nusantara Beverage Lab" }
-                ]
-            };
-        }
-
-        if (q.includes("blocked today")) {
-            return {
-                content: "There are currently 0 blocked batches today. However, there is 1 lot under quarantine (HOLD-QC) awaiting recheck.",
-                sources: [
-                    { type: "Inventory report", id: "INV-STAT", desc: "Daily Blocked Items" }
-                ]
-            };
-        }
-
-        if (q.includes("cold-chain alerts")) {
-            return {
-                content: "Yes, there is 1 active cold-chain alert today in zone FRZ-C (Freezer storage). The current temperature reading is -3°C, which is outside the safe threshold of -20°C to -4°C.",
-                sources: [
-                    { type: "Sensor reading", id: "TEMP-001", desc: "FRZ-C at -3°C" },
-                    { type: "Zone policy", id: "FRZ-C", desc: "Target -20°C to -4°C" }
-                ]
-            };
-        }
-
-        if (q.includes("is rec-2026-002 ready")) {
-            return {
-                content: "Yes, REC-2026-002 has been QC Released and converted into LOT-2026-051. It is currently Stored in HAZ-D-04 and is ready for production scheduling.",
-                sources: [
-                    { type: "Receipt record", id: "REC-2026-002", desc: "Status: QC Released" },
-                    { type: "Lot record", id: "LOT-2026-051", desc: "Status: Stored" }
-                ]
-            };
-        }
-
-        return {
-            content: "No matching operational record found. Try a lot number, receipt number, or material name.",
-            sources: []
-        };
-    };
-
     const handleSend = async (text: string) => {
-        if (!text.trim()) return;
+        if (!text.trim() || isThinking) return;
 
         const newMsg: Message = { id: crypto.randomUUID(), role: "user", content: text };
         setMessages(prev => [...prev, newMsg]);
         setInput("");
         setIsThinking(true);
 
-        // Record to audit log
         try {
             await createItem("audit_logs", {
                 timestamp: new Date().toISOString(),
@@ -114,9 +217,8 @@ export default function CopilotPage() {
             });
         } catch (e) {}
 
-        // Simulate network delay for effect
         setTimeout(() => {
-            const answer = getDeterministicAnswer(text);
+            const answer = searchDemoDB(text);
             const responseMsg: Message = {
                 id: crypto.randomUUID(),
                 role: "assistant",
@@ -125,7 +227,7 @@ export default function CopilotPage() {
             };
             setMessages(prev => [...prev, responseMsg]);
             setIsThinking(false);
-        }, 1000);
+        }, 800);
     };
 
     return (
@@ -136,7 +238,6 @@ export default function CopilotPage() {
             </div>
 
             <div className="flex-1 bg-white border border-outline-variant rounded-xl shadow-sm flex flex-col overflow-hidden">
-                {/* Chat History */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
                     {messages.map(msg => (
                         <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -150,7 +251,7 @@ export default function CopilotPage() {
                                     </span>
                                 </div>
                                 <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                                
+
                                 {msg.sources && msg.sources.length > 0 && (
                                     <div className="mt-4 pt-4 border-t border-outline-variant/50">
                                         <p className="text-[10px] font-bold uppercase tracking-widest mb-2 opacity-70">Source Records</p>
@@ -161,14 +262,10 @@ export default function CopilotPage() {
                                                     <div>
                                                         <span className="font-bold block text-[10px] uppercase opacity-70">{src.type}</span>
                                                         <span className="font-mono text-primary font-bold">{src.id}</span>
-                                                        <span className="block opacity-80 mt-0.5 truncate max-w-[150px]">{src.desc}</span>
+                                                        <span className="block opacity-80 mt-0.5">{src.desc}</span>
                                                     </div>
                                                 </div>
                                             ))}
-                                        </div>
-                                        <div className="mt-4 flex items-start gap-1.5 text-[10px] opacity-70 bg-surface-variant/30 p-2 rounded">
-                                            <span className="material-symbols-outlined text-[12px]">security</span>
-                                            <p>Answers are generated from operational records. Verify before external reporting.</p>
                                         </div>
                                     </div>
                                 )}
@@ -179,17 +276,16 @@ export default function CopilotPage() {
                         <div className="flex justify-start">
                             <div className="bg-surface-container-low text-on-surface border border-outline-variant rounded-2xl p-5 flex items-center gap-3">
                                 <span className="material-symbols-outlined animate-spin text-primary">sync</span>
-                                <span className="text-xs font-bold uppercase tracking-widest opacity-70 animate-pulse">Analyzing Records...</span>
+                                <span className="text-xs font-bold uppercase tracking-widest opacity-70 animate-pulse">Querying Records...</span>
                             </div>
                         </div>
                     )}
                 </div>
 
-                {/* Input Area */}
                 <div className="p-4 border-t border-outline-variant bg-surface-container-lowest">
                     <div className="flex flex-wrap gap-2 mb-4">
                         {suggestedPrompts.map((p, i) => (
-                            <button 
+                            <button
                                 key={i}
                                 onClick={() => handleSend(p)}
                                 disabled={isThinking}
@@ -200,16 +296,16 @@ export default function CopilotPage() {
                         ))}
                     </div>
                     <div className="flex gap-2">
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             className="flex-1 bg-white border border-outline-variant rounded-lg px-4 py-3 text-sm focus:border-primary focus:ring-1"
-                            placeholder="Ask about a lot, material, or receipt..."
+                            placeholder="Ask about a lot, material, receipt, warehouse..."
                             value={input}
                             onChange={e => setInput(e.target.value)}
                             onKeyDown={e => e.key === 'Enter' && handleSend(input)}
                             disabled={isThinking}
                         />
-                        <button 
+                        <button
                             onClick={() => handleSend(input)}
                             disabled={!input.trim() || isThinking}
                             className="bg-primary text-on-primary w-12 h-12 rounded-lg flex items-center justify-center hover:opacity-90 transition-opacity disabled:opacity-50"
