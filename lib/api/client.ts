@@ -62,12 +62,14 @@ export async function createItem<T>(
     });
 
     if (!response.ok) {
+      const errText = await response.text();
+      console.error(`API Error for POST /api/items/${collection}:`, response.status, errText);
       throw new Error("API Error");
     }
 
     return response.json();
   } catch (error) {
-    console.warn(`[DaaS Fallback] Using local state for create ${collection}`);
+    console.error(`[DaaS Fallback] Using local state for create ${collection}`, error);
     return fallbackCreate(collection, data) as { data: T };
   }
 }
