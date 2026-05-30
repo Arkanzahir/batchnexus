@@ -60,9 +60,22 @@ export default function QCStationPage() {
         return suppliers.get(id)?.name || "Unknown Supplier";
     };
 
+    // Generate deterministic AI scores based on the receipt ID so it looks dynamic
+    const getAIScores = (id: string) => {
+        let hash = 0;
+        for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
+        return {
+            confidence: 82 + (Math.abs(hash) % 15), // 82 - 96
+            colorScore: 80 + (Math.abs(hash >> 2) % 18), // 80 - 97
+            defectRisk: (Math.abs(hash >> 3) % 100) < 15 ? "Medium" : "Low",
+            foreignRisk: (Math.abs(hash >> 4) % 100) < 10 ? "Medium" : "Low",
+        };
+    };
+
     const handleApprove = async () => {
         if (!selectedTask) return;
         setProcessing(true);
+        const scores = getAIScores(selectedTask.id);
         try {
             // 1. Update receipt status
             await updateItem("inbound_receipts", selectedTask.id, { status: "QC Released" });
@@ -71,9 +84,9 @@ export default function QCStationPage() {
             const lotNo = `LOT-2026-${String(Math.floor(Math.random() * 900) + 100)}`;
             await createItem("qc_inspections", {
                 receipt_id: selectedTask.id,
-                ai_color_score: 87,
-                ai_defect_risk: 0.08,
-                ai_foreign_matter_risk: 0.05,
+                ai_color_score: scores.colorScore,
+                ai_defect_risk: scores.defectRisk === "Low" ? 0.05 : 0.15,
+                ai_foreign_matter_risk: scores.foreignRisk === "Low" ? 0.02 : 0.10,
                 ai_recommendation: "Pass with human review",
                 human_decision: "QC Released",
                 lot_number_generated: lotNo,
@@ -208,7 +221,7 @@ export default function QCStationPage() {
                                             <AIRecommendationCard 
                                                 title="Visual & Organoleptic AI"
                                                 recommendation="Pass with human review"
-                                                confidence={86}
+                                                confidence={getAIScores(selectedTask.id).confidence}
                                                 reasonCodes={[
                                                     "Colour is within expected range",
                                                     "No visible dark spots detected",
@@ -221,15 +234,19 @@ export default function QCStationPage() {
                                             <div className="grid grid-cols-3 gap-2">
                                                 <div className="bg-white p-3 rounded border border-outline-variant text-center">
                                                     <p className="text-[10px] uppercase tracking-widest font-bold opacity-70">Colour</p>
-                                                    <p className="font-mono font-bold text-primary mt-1">87/100</p>
+                                                    <p className="font-mono font-bold text-primary mt-1">{getAIScores(selectedTask.id).colorScore}/100</p>
                                                 </div>
                                                 <div className="bg-white p-3 rounded border border-outline-variant text-center">
                                                     <p className="text-[10px] uppercase tracking-widest font-bold opacity-70">Defect</p>
-                                                    <p className="font-bold text-secondary mt-1">Low</p>
+                                                    <p className={`font-bold mt-1 ${getAIScores(selectedTask.id).defectRisk === 'Low' ? 'text-secondary' : 'text-error'}`}>
+                                                        {getAIScores(selectedTask.id).defectRisk}
+                                                    </p>
                                                 </div>
                                                 <div className="bg-white p-3 rounded border border-outline-variant text-center">
                                                     <p className="text-[10px] uppercase tracking-widest font-bold opacity-70">Foreign</p>
-                                                    <p className="font-bold text-secondary mt-1">Low</p>
+                                                    <p className={`font-bold mt-1 ${getAIScores(selectedTask.id).foreignRisk === 'Low' ? 'text-secondary' : 'text-error'}`}>
+                                                        {getAIScores(selectedTask.id).foreignRisk}
+                                                    </p>
                                                 </div>
                                             </div>
                                         </div>
