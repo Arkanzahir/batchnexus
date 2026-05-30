@@ -43,7 +43,36 @@ export default function InboundNewPage() {
         if (!extractedData) return;
         setSubmitting(true);
         try {
-            const receiptNo = `REC-2026-${String(Math.floor(Math.random() * 900) + 100)}`;
+            // Lookup material_id and supplier_id from DaaS reference tables
+            let material_id: string | null = null;
+            let supplier_id: string | null = null;
+
+            try {
+                const [materialsRes, suppliersRes] = await Promise.all([
+                    fetchItems<any>("materials"),
+                    fetchItems<any>("suppliers"),
+                ]);
+
+                // Fuzzy match material name
+                if (extractedData.material_name && materialsRes.data) {
+                    const matName = extractedData.material_name.toLowerCase();
+                    const match = materialsRes.data.find((m: any) => 
+                        m.name?.toLowerCase().includes(matName) || matName.includes(m.name?.toLowerCase())
+                    );
+                    if (match) material_id = match.id;
+                }
+
+                // Fuzzy match supplier name
+                if (extractedData.supplier_name && suppliersRes.data) {
+                    const supName = extractedData.supplier_name.toLowerCase();
+                    const match = suppliersRes.data.find((s: any) => 
+                        s.name?.toLowerCase().includes(supName) || supName.includes(s.name?.toLowerCase())
+                    );
+                    if (match) supplier_id = match.id;
+                }
+            } catch (lookupErr) {
+                console.warn("Lookup failed, submitting without relations:", lookupErr);
+            }
 
             await createItem("inbound_receipts", {
                 quantity: Number(extractedData.quantity),
@@ -53,6 +82,8 @@ export default function InboundNewPage() {
                 hazard_class: extractedData.hazard_class,
                 status: "Pending QC",
                 arrival_date: extractedData.arrival_date || new Date().toISOString().split('T')[0],
+                ...(material_id && { material_id }),
+                ...(supplier_id && { supplier_id }),
             });
 
             // Audit log is tracked automatically by DaaS Activity
