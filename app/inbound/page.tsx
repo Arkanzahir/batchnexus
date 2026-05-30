@@ -16,13 +16,17 @@ interface InboundReceipt {
     material_id: { id: string; name: string; type: string; hazard_class: string } | string | null;
 }
 
-function getMaterialName(r: InboundReceipt): string {
+function getMaterialName(r: any): string {
+    if (r.material_name) return r.material_name;
     if (typeof r.material_id === "object" && r.material_id) return r.material_id.name;
+    if (typeof r.material_id === "string") return r.material_id;
     return "Unknown Material";
 }
 
-function getSupplierCode(r: InboundReceipt): string {
-    if (typeof r.supplier_id === "object" && r.supplier_id) return r.supplier_id.code;
+function getSupplierCode(r: any): string {
+    if (r.supplier_name) return r.supplier_name;
+    if (typeof r.supplier_id === "object" && r.supplier_id) return r.supplier_id.code || r.supplier_id.name;
+    if (typeof r.supplier_id === "string") return r.supplier_id;
     return "—";
 }
 
