@@ -44,8 +44,8 @@ async function proxyRequest(
         contentType;
     }
     try {
-      const body = await request.arrayBuffer();
-      if (body.byteLength > 0) fetchOptions.body = body;
+      const body = await request.text();
+      if (body) fetchOptions.body = body;
     } catch {
       // no body
     }
