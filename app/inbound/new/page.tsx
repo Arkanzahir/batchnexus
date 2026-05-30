@@ -46,7 +46,6 @@ export default function InboundNewPage() {
             const receiptNo = `REC-2026-${String(Math.floor(Math.random() * 900) + 100)}`;
 
             await createItem("inbound_receipts", {
-                receipt_no: receiptNo,
                 quantity: Number(extractedData.quantity),
                 unit: extractedData.unit,
                 batch_reference: extractedData.batch_reference,
@@ -54,18 +53,9 @@ export default function InboundNewPage() {
                 hazard_class: extractedData.hazard_class,
                 status: "Pending QC",
                 arrival_date: extractedData.arrival_date || new Date().toISOString().split('T')[0],
-                supplier_name: extractedData.supplier_name,
-                material_name: extractedData.material_name,
             });
 
-            await createItem("audit_logs", {
-                timestamp: new Date().toISOString(),
-                actor: "Current User",
-                role: role,
-                action: "Submitted receipt to QC",
-                entity: receiptNo,
-                change_detail: `${extractedData.quantity} ${extractedData.unit} ${extractedData.material_name} from ${extractedData.supplier_name}. Status set to Pending QC.`
-            });
+            // Audit log is tracked automatically by DaaS Activity
 
             setShowConfirm(false);
             router.push("/inbound");

@@ -50,7 +50,7 @@ export async function getAuthHeaders(): Promise<Record<string, string>> {
   try {
       const daasUrl = getDaasUrl();
       if (!cachedAdminToken || Date.now() > tokenExpiresAt) {
-          const loginRes = await fetch(`${daasUrl}/auth/login`, {
+          const loginRes = await fetch(`${daasUrl}/api/auth/login`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ email: 'admin@example.com', password: 'IgYRlAre0X9qbTZWifnL' })

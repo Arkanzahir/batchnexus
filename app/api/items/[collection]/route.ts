@@ -33,7 +33,7 @@ async function proxyRequest(
   const daasUrl = getDaaSUrl();
   const headers = await getAuthHeaders();
   const searchParams = request.nextUrl.searchParams.toString();
-  const url = `${daasUrl}/items/${collection}${searchParams ? `?${searchParams}` : ''}`;
+  const url = `${daasUrl}/api/items/${collection}${searchParams ? `?${searchParams}` : ''}`;
 
   const fetchOptions: RequestInit = { method, headers, cache: 'no-store' };
 
