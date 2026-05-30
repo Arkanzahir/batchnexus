@@ -160,8 +160,8 @@ export default function PPICPage() {
                 <div className="bg-primary-container text-on-primary-container p-4 rounded-lg flex items-start gap-4 ambient-shadow">
                     <span className="material-symbols-outlined text-secondary-fixed">auto_awesome</span>
                     <div className="flex-1">
-                        <h4 className="font-bold mb-1">Copilot Suggestion</h4>
-                        <p className="text-sm opacity-90">Suggested next production batch: <span className="font-bold text-primary-fixed">{copilotLot.lot_number || copilotLot.id.substring(0,8)}</span> ({getMaterialName(copilotLot.material_id)}) — Move to Ready for production.</p>
+                        <h4 className="font-bold mb-1">Ops Copilot Suggestion</h4>
+                        <p className="text-sm opacity-90">{copilotLot.lot_number || copilotLot.id.substring(0,8)} is recommended next based on QC release time, dispatch priority, and storage readiness.</p>
                     </div>
                     <button 
                         onClick={handleApplyCopilot} 

@@ -4,11 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import { useMantineColorScheme } from "@mantine/core";
 import { notifications as mantineNotifications } from "@mantine/notifications";
 
-const ROLES = [
-    { id: "admin", label: "Admin", icon: "admin_panel_settings", desc: "Full access to all features" },
-    { id: "operator", label: "Operator", icon: "engineering", desc: "QC, Inbound, Warehouse" },
-    { id: "viewer", label: "Viewer", icon: "visibility", desc: "Read-only dashboard access" },
-];
+import { ROLES, useRole, UserRole } from "@/lib/rbac";
+
 
 const NOTIFICATIONS = [
     { id: 1, icon: "warning", color: "text-amber-600", title: "QC Alert", message: "LOT-2026-050 failed odor deviation check", time: "5 min ago", unread: true },
@@ -21,7 +18,7 @@ export const TopBar = () => {
     const { colorScheme, toggleColorScheme } = useMantineColorScheme();
     const isDark = colorScheme === "dark";
 
-    const [activeRole, setActiveRole] = useState("admin");
+    const { role: activeRole, changeRole } = useRole();
     const [showRoleMenu, setShowRoleMenu] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
@@ -57,7 +54,7 @@ export const TopBar = () => {
     };
 
     const handleRoleChange = (roleId: string) => {
-        setActiveRole(roleId);
+        changeRole(roleId as UserRole);
         setShowRoleMenu(false);
         mantineNotifications.show({
             title: "Role Switched",
@@ -75,7 +72,7 @@ export const TopBar = () => {
         setShowProfile(false);
     };
 
-    const currentRole = ROLES.find(r => r.id === activeRole)!;
+    const currentRole = ROLES.find(r => r.id === activeRole) || ROLES[0];
 
     const closeAll = () => {
         setShowRoleMenu(false);

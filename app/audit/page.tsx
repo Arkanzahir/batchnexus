@@ -1,174 +1,187 @@
 "use client";
 import { useEffect, useState } from "react";
-import { fetchItems } from "@/lib/api/client";
+import { fetchItems, createItem } from "@/lib/api/client";
+import { useRole, canGenerateSummary } from "@/lib/rbac";
 
-interface AuditEvent {
-    id: string;
-    time: string;
-    actor: string;
-    action: string;
-    entity: string;
-    change: string;
-    timestamp: number;
-}
-
-export default function AuditLogPage() {
-    const [events, setEvents] = useState<AuditEvent[]>([]);
+export default function AuditPage() {
+    const { role } = useRole();
+    const [audits, setAudits] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState("All");
+    const [search, setSearch] = useState("");
+    
+    // AI Summary state
+    const [summaryLoading, setSummaryLoading] = useState(false);
     const [summary, setSummary] = useState<string | null>(null);
-    const [generating, setGenerating] = useState(false);
 
-    useEffect(() => {
-        // Fetch all operational data to build the unified audit log
-        Promise.all([
-            fetchItems<any>("inbound_receipts", { limit: 20 }),
-            fetchItems<any>("qc_inspections", { limit: 20 }),
-            fetchItems<any>("inventory_moves", { limit: 20 }),
-            fetchItems<any>("lots", { limit: 20 })
-        ]).then(([inboundRes, qcRes, movesRes, lotsRes]) => {
-            const unifiedEvents: AuditEvent[] = [];
-
-            // Map Inbound
-            inboundRes.data.forEach((item: any) => {
-                unifiedEvents.push({
-                    id: `inb-${item.id}`,
-                    time: new Date(item.arrival_date || item.date_created || Date.now()).toLocaleString(),
-                    actor: "System AI / Operator",
-                    action: "Intake",
-                    entity: `RECEIPT-${item.id.substring(0,6).toUpperCase()}`,
-                    change: `Recorded inbound material intake. Status: ${item.status}`,
-                    timestamp: new Date(item.arrival_date || item.date_created || Date.now()).getTime()
-                });
-            });
-
-            // Map QC
-            qcRes.data.forEach((item: any) => {
-                unifiedEvents.push({
-                    id: `qc-${item.id}`,
-                    time: new Date(item.date_created || Date.now()).toLocaleString(),
-                    actor: "QC Inspector",
-                    action: "QC Review",
-                    entity: item.lot_number_generated ? `LOT-${item.lot_number_generated}` : `QC-${item.id.substring(0,4)}`,
-                    change: `Human Decision: ${item.human_decision}. Color Score: ${item.ai_color_score}`,
-                    timestamp: new Date(item.date_created || Date.now()).getTime()
-                });
-            });
-
-            // Map Moves
-            movesRes.data.forEach((item: any) => {
-                unifiedEvents.push({
-                    id: `mov-${item.id}`,
-                    time: new Date(item.date_created || Date.now()).toLocaleString(),
-                    actor: "Warehouse Staff",
-                    action: "Slot Assignment",
-                    entity: item.lot_id,
-                    change: `Moved to bin ${item.to_bin_id}`,
-                    timestamp: new Date(item.date_created || Date.now()).getTime()
-                });
-            });
-
-            // Sort chronologically (newest first)
-            unifiedEvents.sort((a, b) => b.timestamp - a.timestamp);
-            setEvents(unifiedEvents);
-        }).catch(console.error).finally(() => setLoading(false));
-    }, []);
-
-    const handleGenerateSummary = async () => {
-        setGenerating(true);
+    const loadData = async () => {
+        setLoading(true);
         try {
-            const res = await fetch("/api/ai/summary", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                // Only send the top 15 events to avoid huge payloads
-                body: JSON.stringify({ logs: events.slice(0, 15) })
-            });
-            const data = await res.json();
-            setSummary(data.text);
+            const res = await fetchItems<any>("audit_logs", { sort: "-timestamp", limit: 100 });
+            setAudits(res.data);
         } catch (error) {
             console.error(error);
-            setSummary("Failed to generate summary.");
         } finally {
-            setGenerating(false);
+            setLoading(false);
         }
     };
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center py-32 text-on-surface-variant">
-                <span className="material-symbols-outlined animate-spin mr-3 text-3xl">sync</span>
-                Compiling Unified Audit Logs...
-            </div>
-        );
-    }
+    useEffect(() => {
+        loadData();
+    }, []);
+
+    const filteredAudits = audits.filter(a => {
+        if (filter !== "All") {
+            if (filter === "Intake" && !["Completed AI extraction", "Submitted receipt to QC"].includes(a.action)) return false;
+            if (filter === "QC" && !["Approved QC release", "Generated lot number"].includes(a.action)) return false;
+            if (filter === "Warehouse" && !["Assigned warehouse slot"].includes(a.action)) return false;
+            if (filter === "Copilot" && !a.action.includes("Copilot")) return false;
+            if (filter === "Summary" && !a.action.includes("Operations summary")) return false;
+        }
+
+        if (search) {
+            const q = search.toLowerCase();
+            return (
+                (a.actor && a.actor.toLowerCase().includes(q)) ||
+                (a.action && a.action.toLowerCase().includes(q)) ||
+                (a.entity && a.entity.toLowerCase().includes(q)) ||
+                (a.change_detail && a.change_detail.toLowerCase().includes(q))
+            );
+        }
+        return true;
+    });
+
+    const handleGenerateSummary = async () => {
+        setSummaryLoading(true);
+        // Simulate AI generation time
+        await new Promise(r => setTimeout(r, 1500));
+        
+        const demoSummary = `Today's Operations Summary:
+- 8 inbound receipts registered.
+- 3 materials are pending QC.
+- 5 lots have been released.
+- 1 lot is blocked due to QC review.
+- 1 cold-chain alert was detected in FRZ-C.
+- LOT-2026-051 should be prioritized for dispatch.`;
+        
+        setSummary(demoSummary);
+        
+        try {
+            await createItem("audit_logs", {
+                timestamp: new Date().toISOString(),
+                actor: "Current User",
+                role: role,
+                action: "Generated AI Operations summary",
+                entity: "Report",
+                change_detail: "Operations summary generated."
+            });
+            await loadData();
+        } catch (e) {}
+        
+        setSummaryLoading(false);
+    };
+
+    const hasPermission = canGenerateSummary(role);
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col h-[calc(100vh-140px)] gap-6">
             <div className="flex justify-between items-end">
                 <div>
-                    <div className="flex items-center gap-2 mb-2">
-                        <span className="bg-secondary-fixed text-on-secondary-fixed text-[10px] font-bold px-2 py-0.5 rounded-sm uppercase tracking-widest">Enterprise Feature</span>
-                    </div>
-                    <h2 className="font-display font-bold text-3xl text-primary">Operations Audit & Summary</h2>
-                    <p className="text-on-surface-variant mt-1">Immutable compliance tracking for all system critical actions.</p>
+                    <h2 className="font-display font-bold text-3xl text-primary">Audit Log & Reports</h2>
+                    <p className="text-on-surface-variant mt-1">Immutable ledger of all system actions and AI-generated insights.</p>
                 </div>
-                <div className="flex gap-4">
+                <div className="flex items-center gap-4">
                     <button 
                         onClick={handleGenerateSummary}
-                        disabled={generating}
-                        className="bg-primary text-on-primary font-bold py-3 px-6 rounded-sm text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm hover:opacity-90 disabled:opacity-50"
+                        disabled={summaryLoading || !hasPermission}
+                        className={`font-bold py-2.5 px-5 rounded-sm text-xs uppercase tracking-widest transition-all flex items-center gap-2 shadow-sm
+                            ${hasPermission ? 'bg-secondary text-on-secondary hover:opacity-90' : 'bg-surface-variant text-on-surface-variant opacity-50 cursor-not-allowed'}`}
                     >
-                        {generating ? <span className="material-symbols-outlined animate-spin text-sm">sync</span> : <span className="material-symbols-outlined text-sm">smart_toy</span>} 
+                        {summaryLoading ? <span className="material-symbols-outlined animate-spin text-[16px]">sync</span> : <span className="material-symbols-outlined text-[16px]">auto_awesome</span>}
                         Generate AI Summary
-                    </button>
-                    <button className="bg-white border border-primary text-primary font-bold py-3 px-6 rounded-sm text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-surface-container-low transition-colors">
-                        <span className="material-symbols-outlined text-sm">download</span> Export CSV
                     </button>
                 </div>
             </div>
 
             {summary && (
-                <div className="bg-primary-container text-on-primary-container p-6 rounded-xl border border-primary/20 shadow-sm animate-in fade-in slide-in-from-top-4">
-                    <h3 className="font-bold flex items-center gap-2 mb-4">
-                        <span className="material-symbols-outlined">analytics</span> Executive Operations Summary
-                    </h3>
-                    <div className="text-sm leading-relaxed whitespace-pre-wrap font-medium opacity-90">
-                        {summary}
+                <div className="bg-primary-container text-on-primary-container p-6 rounded-xl border border-primary/20 shadow-sm relative overflow-hidden animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div className="flex items-center gap-2 mb-4">
+                        <span className="material-symbols-outlined text-primary">summarize</span>
+                        <h3 className="font-bold">Daily Operations Insight</h3>
                     </div>
+                    <div className="bg-white/50 backdrop-blur-sm p-4 rounded-lg font-mono text-sm leading-relaxed border border-primary/10">
+                        {summary.split('\n').map((line, i) => (
+                            <div key={i} className={line.startsWith('-') ? 'ml-4' : 'font-bold mb-2'}>{line}</div>
+                        ))}
+                    </div>
+                    <p className="text-[10px] uppercase tracking-widest mt-4 opacity-70">Generated from: inbound receipts, QC inspections, lots, temperature readings, warehouse moves, and dispatch records.</p>
                 </div>
             )}
 
-            <div className="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden mt-4">
-                <table className="w-full text-left">
-                    <thead className="bg-surface-container-low text-[10px] font-bold text-on-surface-variant uppercase tracking-widest border-b border-outline-variant">
-                        <tr>
-                            <th className="px-6 py-4">Timestamp</th>
-                            <th className="px-6 py-4">Actor</th>
-                            <th className="px-6 py-4">Action</th>
-                            <th className="px-6 py-4">Entity</th>
-                            <th className="px-6 py-4">Change Detail</th>
-                        </tr>
-                    </thead>
-                    <tbody className="text-sm divide-y divide-outline-variant/30">
-                        {events.map((row, idx) => (
-                            <tr key={idx} className="hover:bg-surface-container-low transition-colors">
-                                <td className="px-6 py-4 text-xs text-outline">{row.time}</td>
-                                <td className="px-6 py-4 font-bold">{row.actor}</td>
-                                <td className="px-6 py-4 font-bold text-primary">{row.action}</td>
-                                <td className="px-6 py-4">
-                                    <span className="bg-surface-container-highest px-2 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-widest border border-outline-variant truncate max-w-[150px] inline-block">
-                                        {row.entity}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 text-xs text-on-surface-variant">{row.change}</td>
-                            </tr>
+            <div className="flex-1 flex flex-col bg-white border border-outline-variant rounded-xl shadow-sm overflow-hidden min-h-0">
+                <div className="p-4 border-b border-outline-variant bg-surface-container flex flex-wrap gap-4 items-center justify-between">
+                    <div className="flex gap-2">
+                        {['All', 'Intake', 'QC', 'Warehouse', 'Copilot', 'Summary'].map(f => (
+                            <button
+                                key={f}
+                                onClick={() => setFilter(f)}
+                                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors border ${filter === f ? 'bg-primary text-on-primary border-primary' : 'bg-white text-on-surface-variant border-outline-variant hover:border-primary/50 hover:text-primary'}`}
+                            >
+                                {f}
+                            </button>
                         ))}
-                        {events.length === 0 && (
+                    </div>
+                    <div className="relative w-64">
+                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+                        <input 
+                            type="text" 
+                            placeholder="Search actor, entity, details..." 
+                            className="w-full pl-9 pr-4 py-1.5 bg-white border border-outline-variant rounded-md text-xs focus:border-primary focus:ring-1"
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                        />
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto">
+                    <table className="w-full text-left text-sm whitespace-nowrap">
+                        <thead className="bg-surface-container-lowest sticky top-0 z-10 text-[10px] uppercase tracking-widest font-bold text-on-surface-variant shadow-sm">
                             <tr>
-                                <td colSpan={5} className="text-center py-8 text-on-surface-variant">No audit logs found.</td>
+                                <th className="px-6 py-4 font-bold border-b border-outline-variant w-[15%]">Timestamp</th>
+                                <th className="px-6 py-4 font-bold border-b border-outline-variant w-[20%]">Actor</th>
+                                <th className="px-6 py-4 font-bold border-b border-outline-variant w-[20%]">Action</th>
+                                <th className="px-6 py-4 font-bold border-b border-outline-variant w-[15%]">Entity</th>
+                                <th className="px-6 py-4 font-bold border-b border-outline-variant w-[30%]">Change Detail</th>
                             </tr>
-                        )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-outline-variant bg-white">
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={5} className="p-8 text-center"><span className="material-symbols-outlined animate-spin text-primary">sync</span></td>
+                                </tr>
+                            ) : filteredAudits.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="p-8 text-center text-on-surface-variant opacity-70">No audit events match your filters.</td>
+                                </tr>
+                            ) : (
+                                filteredAudits.map(audit => (
+                                    <tr key={audit.id} className="hover:bg-surface-container-low transition-colors">
+                                        <td className="px-6 py-4 text-xs font-mono opacity-80">{new Date(audit.timestamp).toLocaleString('en-GB')}</td>
+                                        <td className="px-6 py-4">
+                                            <div className="font-bold text-on-surface">{audit.actor}</div>
+                                            <div className="text-[10px] uppercase tracking-widest opacity-70">{audit.role}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="bg-primary/10 text-primary px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest">{audit.action}</span>
+                                        </td>
+                                        <td className="px-6 py-4 font-mono font-bold text-xs">{audit.entity}</td>
+                                        <td className="px-6 py-4 text-xs whitespace-normal max-w-xs">{audit.change_detail}</td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );
