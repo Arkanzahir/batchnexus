@@ -24,7 +24,7 @@ export default function QCStationPage() {
             const [matRes, supRes, recRes] = await Promise.all([
                 fetchItems<any>("materials", {}),
                 fetchItems<any>("suppliers", {}),
-                fetchItems<any>("inbound_receipts", { sort: "-date_created", limit: 50 })
+                fetchItems<any>("inbound_receipts", { sort: "-arrival_date", limit: 50 })
             ]);
 
             setMaterials(new Map(matRes.data.map((m: any) => [m.id, m])));
