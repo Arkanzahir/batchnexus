@@ -62,7 +62,8 @@ function parseManifestLocally(text: string) {
 
   // Extract supplier name - look for "dari", "from", "supplier"
   let supplier_name = "Unknown Supplier";
-  const supplierMatch = text.match(/(?:dari|from|supplier[:\s]*)\s*([A-Za-z\s]+?)(?:\s*,|\s*\.|$|\s+\d)/i);
+  // Allow quotes at the end of the text and numbers in the supplier name
+  const supplierMatch = text.match(/(?:dari|from|supplier[:\s]*)\s*([A-Za-z0-9\s]+?)(?:\s*,|\s*\.|\s*"|\s*'|$|\s+\d)/i);
   if (supplierMatch) {
     supplier_name = supplierMatch[1].trim();
     // Capitalize each word
