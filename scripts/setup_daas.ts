@@ -83,7 +83,7 @@ async function run() {
             // We find the Public role ID first
             const rolesRes = await fetch(`${DAAS_URL}/roles`, { headers });
             const rolesData = await rolesRes.json();
-            const publicRole = rolesData.data.find(r => r.name === 'Public');
+            const publicRole = rolesData.data.find((r: any) => r.name === 'Public');
             if (publicRole) {
                 await fetch(`${DAAS_URL}/permissions`, {
                     method: 'POST',
